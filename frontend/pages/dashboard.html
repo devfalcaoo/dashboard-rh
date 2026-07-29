@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard - Gestão de Desempenho</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../css/variaveis.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/componentes.css">
+  <link rel="stylesheet" href="../css/dashboard.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="conteudo-principal">
+      <div class="pagina-header">
+        <h1>Dashboard</h1>
+      </div>
+
+      <div id="area-conteudo">
+        <div class="text-center text-muted py-5" id="carregando">
+          <div class="spinner-border text-primary" role="status"></div>
+          <p class="mt-2">Carregando indicadores...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="../js/config/apiConfig.js"></script>
+  <script src="../js/components/shell.js"></script>
+  <script>
+    exigirSessao();
+    renderizarShell('dashboard.html');
+
+    async function carregarDashboard() {
+      const areaConteudo = document.getElementById('area-conteudo');
+      try {
+        const [resumo, evolucao] = await Promise.all([
+          apiFetch('/dashboard/resumo'),
+          apiFetch('/dashboard/evolucao-mensal?meses=6'),
+        ]);
+
+        areaConteudo.innerHTML = `
+          <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+              <div class="cartao-indicador">
+                <div class="rotulo">Colaboradores ativos</div>
+                <div class="valor">${resumo.totalColaboradores}</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="cartao-indicador">
+                <div class="rotulo">Avaliações pendentes</div>
+                <div class="valor">${resumo.avaliacoesPendentes}</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="cartao-indicador">
+                <div class="rotulo">Avaliações concluídas</div>
+                <div class="valor">${resumo.avaliacoesConcluidas}</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="cartao-indicador">
+                <div class="rotulo">Média geral</div>
+                <div class="valor">${resumo.mediaGeral ?? '-'}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <div class="cartao-conteudo">
+                <h2 style="font-size:1rem;">Média por departamento</h2>
+                <canvas id="grafico-departamento" height="220"></canvas>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="cartao-conteudo">
+                <h2 style="font-size:1rem;">Evolução mensal da média</h2>
+                <canvas id="grafico-evolucao" height="220"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="cartao-conteudo">
+                <h2 style="font-size:1rem;">Ranking (top 10)</h2>
+                ${montarTabelaRanking(resumo.ranking.slice(0, 10))}
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="cartao-conteudo">
+                <h2 style="font-size:1rem;">Competências críticas</h2>
+                ${montarTabelaCompetenciasCriticas(resumo.competenciasCriticas)}
+              </div>
+            </div>
+          </div>
+        `;
+
+        desenharGraficoDepartamento(resumo.mediaPorDepartamento);
+        desenharGraficoEvolucao(evolucao);
+      } catch (erro) {
+        areaConteudo.innerHTML = `<div class="alert alert-danger">${erro.message}</div>`;
+      }
+    }
+
+    function montarTabelaRanking(ranking) {
+      if (!ranking.length) {
+        return '<p class="estado-vazio">Nenhuma avaliação concluída ainda.</p>';
+      }
+      const linhas = ranking
+        .map(
+          (item, indice) => `
+          <tr>
+            <td>${indice + 1}º</td>
+            <td class="valor-dado">${item.colaboradorId.substring(0, 8)}...</td>
+            <td class="valor-dado">${item.media}</td>
+          </tr>`
+        )
+        .join('');
+      return `
+        <table class="table tabela-padrao">
+          <thead><tr><th>#</th><th>Colaborador</th><th>Média</th></tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>`;
+    }
+
+    function montarTabelaCompetenciasCriticas(lista) {
+      if (!lista.length) {
+        return '<p class="estado-vazio">Sem dados suficientes ainda.</p>';
+      }
+      const linhas = lista
+        .map((item) => `<tr><td>${item.competenciaNome}</td><td class="valor-dado">${item.media}</td></tr>`)
+        .join('');
+      return `
+        <table class="table tabela-padrao">
+          <thead><tr><th>Competência</th><th>Média</th></tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>`;
+    }
+
+    function desenharGraficoDepartamento(dados) {
+      const contexto = document.getElementById('grafico-departamento');
+      new Chart(contexto, {
+        type: 'bar',
+        data: {
+          labels: dados.map((d) => d.departamentoNome),
+          datasets: [{ label: 'Média', data: dados.map((d) => d.media), backgroundColor: '#7c3aed' }],
+        },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 10 } } },
+      });
+    }
+
+    function desenharGraficoEvolucao(dados) {
+      const contexto = document.getElementById('grafico-evolucao');
+      new Chart(contexto, {
+        type: 'line',
+        data: {
+          labels: dados.map((d) => d.mes),
+          datasets: [{ label: 'Média', data: dados.map((d) => d.media), borderColor: '#5b21b6', tension: 0.3 }],
+        },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 10 } } },
+      });
+    }
+
+    carregarDashboard();
+  </script>
+</body>
+</html>

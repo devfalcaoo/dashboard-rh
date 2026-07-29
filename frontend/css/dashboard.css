@@ -1,0 +1,8 @@
+/* ==========================================================================
+   ARQUIVO: frontend/css/dashboard.css
+   OBJETIVO: Ajustes visuais especificos da tela de dashboard.
+   ========================================================================== */
+
+#area-conteudo canvas {
+  max-height: 260px;
+}

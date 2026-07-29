@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usuários - Gestão de Desempenho</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../css/variaveis.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/componentes.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="conteudo-principal">
+      <div class="pagina-header">
+        <h1>Usuários</h1>
+        <button class="btn btn-roxo" data-bs-toggle="modal" data-bs-target="#modal-usuario" onclick="abrirModalNovo()">
+          <i class="bi bi-plus-lg"></i> Novo Usuário
+        </button>
+      </div>
+      <div class="cartao-conteudo">
+        <div id="area-tabela">
+          <div class="text-center text-muted py-5"><div class="spinner-border text-primary"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modal-usuario" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="form-usuario">
+          <div class="modal-header">
+            <h5 class="modal-title" id="titulo-modal">Novo Usuário</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div id="alerta-modal" class="alert alert-danger d-none"></div>
+            <input type="hidden" id="usuario-id" />
+            <div class="mb-3">
+              <label class="form-label">Nome</label>
+              <input type="text" class="form-control" id="nome" required />
+            </div>
+            <div class="mb-3" id="grupo-email">
+              <label class="form-label">E-mail</label>
+              <input type="email" class="form-control" id="email" required />
+            </div>
+            <div class="mb-3" id="grupo-senha">
+              <label class="form-label">Senha temporária</label>
+              <input type="text" class="form-control" id="senhaTemporaria" minlength="6" />
+              <div class="form-text">O usuário deve alterá-la no primeiro acesso.</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Perfil</label>
+              <select class="form-select" id="perfil" required>
+                <option value="administrador_empresa">Administrador da Empresa</option>
+                <option value="rh">RH</option>
+                <option value="gestor">Gestor</option>
+                <option value="lider">Líder</option>
+                <option value="colaborador">Colaborador</option>
+              </select>
+            </div>
+            <div class="mb-3 d-none" id="grupo-ativo">
+              <label class="form-label">Status</label>
+              <select class="form-select" id="ativo">
+                <option value="true">Ativo</option>
+                <option value="false">Inativo</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-roxo">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/config/apiConfig.js"></script>
+  <script src="../js/components/shell.js"></script>
+  <script>
+    exigirSessao();
+    renderizarShell('usuarios.html');
+
+    let modalUsuario;
+    let cache = [];
+
+    async function carregarTabela() {
+      const areaTabela = document.getElementById('area-tabela');
+      try {
+        const resultado = await apiFetch('/usuarios?tamanhoPagina=100');
+        cache = resultado.registros;
+
+        if (cache.length === 0) {
+          areaTabela.innerHTML = '<p class="estado-vazio">Nenhum usuário cadastrado ainda.</p>';
+          return;
+        }
+
+        const linhas = cache.map((u) => `
+          <tr>
+            <td class="valor-dado">${u.nome}</td>
+            <td>${u.email}</td>
+            <td>${u.perfil.replace('_', ' ')}</td>
+            <td><span class="badge-status ${u.ativo ? 'concluida' : 'cancelada'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-secondary" onclick="abrirModalEditar('${u.id}')"><i class="bi bi-pencil"></i> Editar</button>
+            </td>
+          </tr>`).join('');
+
+        areaTabela.innerHTML = `
+          <table class="table tabela-padrao">
+            <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Status</th><th></th></tr></thead>
+            <tbody>${linhas}</tbody>
+          </table>`;
+      } catch (erro) {
+        areaTabela.innerHTML = `<div class="alert alert-danger">${erro.message}</div>`;
+      }
+    }
+
+    function abrirModalNovo() {
+      document.getElementById('form-usuario').reset();
+      document.getElementById('usuario-id').value = '';
+      document.getElementById('titulo-modal').textContent = 'Novo Usuário';
+      document.getElementById('grupo-email').classList.remove('d-none');
+      document.getElementById('grupo-senha').classList.remove('d-none');
+      document.getElementById('grupo-ativo').classList.add('d-none');
+      document.getElementById('email').required = true;
+      document.getElementById('senhaTemporaria').required = true;
+      document.getElementById('alerta-modal').classList.add('d-none');
+    }
+
+    function abrirModalEditar(id) {
+      const usuario = cache.find((u) => u.id === id);
+      document.getElementById('usuario-id').value = usuario.id;
+      document.getElementById('titulo-modal').textContent = 'Editar Usuário';
+      document.getElementById('nome').value = usuario.nome;
+      document.getElementById('perfil').value = usuario.perfil;
+      document.getElementById('grupo-email').classList.add('d-none');
+      document.getElementById('grupo-senha').classList.add('d-none');
+      document.getElementById('email').required = false;
+      document.getElementById('senhaTemporaria').required = false;
+      document.getElementById('grupo-ativo').classList.remove('d-none');
+      document.getElementById('ativo').value = String(usuario.ativo);
+      document.getElementById('alerta-modal').classList.add('d-none');
+      modalUsuario.show();
+    }
+
+    document.getElementById('form-usuario').addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      const alertaModal = document.getElementById('alerta-modal');
+      alertaModal.classList.add('d-none');
+      const id = document.getElementById('usuario-id').value;
+
+      try {
+        if (id) {
+          const payload = {
+            nome: document.getElementById('nome').value.trim(),
+            perfil: document.getElementById('perfil').value,
+            ativo: document.getElementById('ativo').value === 'true',
+          };
+          await apiFetch(`/usuarios/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        } else {
+          const payload = {
+            nome: document.getElementById('nome').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            perfil: document.getElementById('perfil').value,
+            senhaTemporaria: document.getElementById('senhaTemporaria').value,
+          };
+          await apiFetch('/usuarios', { method: 'POST', body: JSON.stringify(payload) });
+        }
+        modalUsuario.hide();
+        carregarTabela();
+      } catch (erro) {
+        alertaModal.textContent = erro.detalhes?.erros?.join(' ') || erro.message;
+        alertaModal.classList.remove('d-none');
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      modalUsuario = new bootstrap.Modal(document.getElementById('modal-usuario'));
+    });
+
+    carregarTabela();
+  </script>
+</body>
+</html>

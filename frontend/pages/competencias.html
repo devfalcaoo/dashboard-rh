@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Competências - Gestão de Desempenho</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../css/variaveis.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/componentes.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="conteudo-principal">
+      <div class="pagina-header">
+        <h1>Competências</h1>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modal-categoria" onclick="abrirModalCategoriaNova()">
+            <i class="bi bi-tags"></i> Nova Categoria
+          </button>
+          <button class="btn btn-roxo" data-bs-toggle="modal" data-bs-target="#modal-competencia" onclick="abrirModalCompetenciaNova()">
+            <i class="bi bi-plus-lg"></i> Nova Competência
+          </button>
+        </div>
+      </div>
+      <div class="cartao-conteudo">
+        <div id="area-tabela">
+          <div class="text-center text-muted py-5"><div class="spinner-border text-primary"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modal-categoria" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="form-categoria">
+          <div class="modal-header">
+            <h5 class="modal-title">Nova Categoria</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div id="alerta-categoria" class="alert alert-danger d-none"></div>
+            <div class="mb-3">
+              <label class="form-label">Nome</label>
+              <input type="text" class="form-control" id="categoriaNome" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Descrição</label>
+              <textarea class="form-control" id="categoriaDescricao" rows="2"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-roxo">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modal-competencia" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="form-competencia">
+          <div class="modal-header">
+            <h5 class="modal-title" id="titulo-modal-competencia">Nova Competência</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div id="alerta-competencia" class="alert alert-danger d-none"></div>
+            <input type="hidden" id="competencia-id" />
+            <div class="mb-3">
+              <label class="form-label">Nome</label>
+              <input type="text" class="form-control" id="competenciaNome" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Categoria</label>
+              <select class="form-select" id="categoriaId" required></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Peso</label>
+              <input type="number" step="0.1" min="0.01" class="form-control" id="peso" value="1" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Descrição</label>
+              <textarea class="form-control" id="competenciaDescricao" rows="2"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-roxo">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/config/apiConfig.js"></script>
+  <script src="../js/components/shell.js"></script>
+  <script>
+    exigirSessao();
+    renderizarShell('competencias.html');
+
+    let modalCategoria, modalCompetencia;
+    let categoriasCache = [];
+    let competenciasCache = [];
+
+    function nomeCategoria(id) {
+      return categoriasCache.find((c) => c.id === id)?.nome || '-';
+    }
+
+    async function carregarCategorias() {
+      const resultado = await apiFetch('/categorias-competencias?tamanhoPagina=200');
+      categoriasCache = resultado.registros;
+      const select = document.getElementById('categoriaId');
+      select.innerHTML = categoriasCache.map((c) => `<option value="${c.id}">${c.nome}</option>`).join('');
+    }
+
+    async function carregarTabela() {
+      const areaTabela = document.getElementById('area-tabela');
+      try {
+        await carregarCategorias();
+        const resultado = await apiFetch('/competencias?tamanhoPagina=200');
+        competenciasCache = resultado.registros;
+
+        if (competenciasCache.length === 0) {
+          areaTabela.innerHTML = '<p class="estado-vazio">Nenhuma competência cadastrada ainda.</p>';
+          return;
+        }
+
+        const linhas = competenciasCache.map((c) => `
+          <tr>
+            <td class="valor-dado">${c.nome}</td>
+            <td>${nomeCategoria(c.categoria_id)}</td>
+            <td>${c.peso}</td>
+            <td><span class="badge-status ${c.ativo ? 'concluida' : 'cancelada'}">${c.ativo ? 'Ativa' : 'Inativa'}</span></td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-secondary" onclick="abrirModalCompetenciaEditar('${c.id}')"><i class="bi bi-pencil"></i> Editar</button>
+            </td>
+          </tr>`).join('');
+
+        areaTabela.innerHTML = `
+          <table class="table tabela-padrao">
+            <thead><tr><th>Nome</th><th>Categoria</th><th>Peso</th><th>Status</th><th></th></tr></thead>
+            <tbody>${linhas}</tbody>
+          </table>`;
+      } catch (erro) {
+        areaTabela.innerHTML = `<div class="alert alert-danger">${erro.message}</div>`;
+      }
+    }
+
+    function abrirModalCategoriaNova() {
+      document.getElementById('form-categoria').reset();
+      document.getElementById('alerta-categoria').classList.add('d-none');
+    }
+
+    document.getElementById('form-categoria').addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      const alerta = document.getElementById('alerta-categoria');
+      alerta.classList.add('d-none');
+      const payload = {
+        nome: document.getElementById('categoriaNome').value.trim(),
+        descricao: document.getElementById('categoriaDescricao').value.trim() || undefined,
+      };
+      try {
+        await apiFetch('/categorias-competencias', { method: 'POST', body: JSON.stringify(payload) });
+        modalCategoria.hide();
+        carregarTabela();
+      } catch (erro) {
+        alerta.textContent = erro.detalhes?.erros?.join(' ') || erro.message;
+        alerta.classList.remove('d-none');
+      }
+    });
+
+    async function abrirModalCompetenciaNova() {
+      document.getElementById('form-competencia').reset();
+      document.getElementById('competencia-id').value = '';
+      document.getElementById('titulo-modal-competencia').textContent = 'Nova Competência';
+      document.getElementById('alerta-competencia').classList.add('d-none');
+      await carregarCategorias();
+    }
+
+    async function abrirModalCompetenciaEditar(id) {
+      const competencia = competenciasCache.find((c) => c.id === id);
+      await carregarCategorias();
+      document.getElementById('competencia-id').value = competencia.id;
+      document.getElementById('titulo-modal-competencia').textContent = 'Editar Competência';
+      document.getElementById('competenciaNome').value = competencia.nome;
+      document.getElementById('categoriaId').value = competencia.categoria_id;
+      document.getElementById('peso').value = competencia.peso;
+      document.getElementById('competenciaDescricao').value = competencia.descricao || '';
+      document.getElementById('alerta-competencia').classList.add('d-none');
+      modalCompetencia.show();
+    }
+
+    document.getElementById('form-competencia').addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      const alerta = document.getElementById('alerta-competencia');
+      alerta.classList.add('d-none');
+      const id = document.getElementById('competencia-id').value;
+      const payload = {
+        nome: document.getElementById('competenciaNome').value.trim(),
+        categoriaId: document.getElementById('categoriaId').value,
+        peso: Number(document.getElementById('peso').value),
+        descricao: document.getElementById('competenciaDescricao').value.trim() || undefined,
+      };
+      try {
+        if (id) {
+          await apiFetch(`/competencias/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        } else {
+          await apiFetch('/competencias', { method: 'POST', body: JSON.stringify(payload) });
+        }
+        modalCompetencia.hide();
+        carregarTabela();
+      } catch (erro) {
+        alerta.textContent = erro.detalhes?.erros?.join(' ') || erro.message;
+        alerta.classList.remove('d-none');
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      modalCategoria = new bootstrap.Modal(document.getElementById('modal-categoria'));
+      modalCompetencia = new bootstrap.Modal(document.getElementById('modal-competencia'));
+    });
+
+    carregarTabela();
+  </script>
+</body>
+</html>

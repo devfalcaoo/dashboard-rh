@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Empresas - Gestão de Desempenho</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../css/variaveis.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/componentes.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="conteudo-principal">
+      <div class="pagina-header">
+        <h1>Empresas Clientes</h1>
+        <button class="btn btn-roxo" data-bs-toggle="modal" data-bs-target="#modal-empresa" onclick="abrirModalNovo()">
+          <i class="bi bi-plus-lg"></i> Nova Empresa
+        </button>
+      </div>
+      <div class="cartao-conteudo">
+        <div id="area-tabela">
+          <div class="text-center text-muted py-5"><div class="spinner-border text-primary"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modal-empresa" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="form-empresa">
+          <div class="modal-header">
+            <h5 class="modal-title" id="titulo-modal">Nova Empresa</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div id="alerta-modal" class="alert alert-danger d-none"></div>
+            <input type="hidden" id="empresa-id" />
+            <div class="mb-3">
+              <label class="form-label">Razão Social</label>
+              <input type="text" class="form-control" id="razaoSocial" required />
+            </div>
+            <div class="mb-3" id="grupo-cnpj">
+              <label class="form-label">CNPJ</label>
+              <input type="text" class="form-control" id="cnpj" maxlength="14" placeholder="Somente números" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Plano</label>
+              <input type="text" class="form-control" id="plano" placeholder="padrao" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-roxo">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/config/apiConfig.js"></script>
+  <script src="../js/components/shell.js"></script>
+  <script>
+    exigirSessao();
+    renderizarShell('empresas.html');
+
+    let modalEmpresa;
+    let cache = [];
+
+    async function carregarTabela() {
+      const areaTabela = document.getElementById('area-tabela');
+      try {
+        const resultado = await apiFetch('/empresas?tamanhoPagina=100');
+        cache = resultado.registros;
+
+        if (cache.length === 0) {
+          areaTabela.innerHTML = '<p class="estado-vazio">Nenhuma empresa cadastrada ainda.</p>';
+          return;
+        }
+
+        const linhas = cache.map((e) => `
+          <tr>
+            <td class="valor-dado">${e.razao_social}</td>
+            <td>${e.cnpj}</td>
+            <td>${e.plano}</td>
+            <td><span class="badge-status ${e.ativo ? 'concluida' : 'cancelada'}">${e.ativo ? 'Ativa' : 'Inativa'}</span></td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-secondary me-1" onclick="abrirModalEditar('${e.id}')"><i class="bi bi-pencil"></i> Editar</button>
+              <button class="btn btn-sm ${e.ativo ? 'btn-outline-danger' : 'btn-outline-success'}" onclick="alternarStatus('${e.id}', ${!e.ativo})">
+                <i class="bi ${e.ativo ? 'bi-slash-circle' : 'bi-check-circle'}"></i> ${e.ativo ? 'Inativar' : 'Ativar'}
+              </button>
+            </td>
+          </tr>`).join('');
+
+        areaTabela.innerHTML = `
+          <table class="table tabela-padrao">
+            <thead><tr><th>Razão Social</th><th>CNPJ</th><th>Plano</th><th>Status</th><th></th></tr></thead>
+            <tbody>${linhas}</tbody>
+          </table>`;
+      } catch (erro) {
+        areaTabela.innerHTML = `<div class="alert alert-danger">${erro.message}</div>`;
+      }
+    }
+
+    function abrirModalNovo() {
+      document.getElementById('form-empresa').reset();
+      document.getElementById('empresa-id').value = '';
+      document.getElementById('titulo-modal').textContent = 'Nova Empresa';
+      document.getElementById('grupo-cnpj').classList.remove('d-none');
+      document.getElementById('cnpj').required = true;
+      document.getElementById('alerta-modal').classList.add('d-none');
+    }
+
+    function abrirModalEditar(id) {
+      const empresa = cache.find((e) => e.id === id);
+      document.getElementById('empresa-id').value = empresa.id;
+      document.getElementById('titulo-modal').textContent = 'Editar Empresa';
+      document.getElementById('razaoSocial').value = empresa.razao_social;
+      document.getElementById('plano').value = empresa.plano;
+      document.getElementById('grupo-cnpj').classList.add('d-none');
+      document.getElementById('cnpj').required = false;
+      document.getElementById('alerta-modal').classList.add('d-none');
+      modalEmpresa.show();
+    }
+
+    document.getElementById('form-empresa').addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      const alertaModal = document.getElementById('alerta-modal');
+      alertaModal.classList.add('d-none');
+      const id = document.getElementById('empresa-id').value;
+
+      try {
+        if (id) {
+          const payload = {
+            razaoSocial: document.getElementById('razaoSocial').value.trim(),
+            plano: document.getElementById('plano').value.trim() || undefined,
+          };
+          await apiFetch(`/empresas/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        } else {
+          const payload = {
+            razaoSocial: document.getElementById('razaoSocial').value.trim(),
+            cnpj: document.getElementById('cnpj').value.trim(),
+            plano: document.getElementById('plano').value.trim() || undefined,
+          };
+          await apiFetch('/empresas', { method: 'POST', body: JSON.stringify(payload) });
+        }
+        bootstrap.Modal.getInstance(document.getElementById('modal-empresa')).hide();
+        carregarTabela();
+      } catch (erro) {
+        alertaModal.textContent = erro.detalhes?.erros?.join(' ') || erro.message;
+        alertaModal.classList.remove('d-none');
+      }
+    });
+
+    async function alternarStatus(id, novoStatus) {
+      try {
+        await apiFetch(`/empresas/${id}/status`, { method: 'PATCH', body: JSON.stringify({ ativo: novoStatus }) });
+        carregarTabela();
+      } catch (erro) {
+        alert(erro.message);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      modalEmpresa = new bootstrap.Modal(document.getElementById('modal-empresa'));
+    });
+
+    carregarTabela();
+  </script>
+</body>
+</html>

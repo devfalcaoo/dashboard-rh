@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configurações - Gestão de Desempenho</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../css/variaveis.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/componentes.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="conteudo-principal">
+      <div class="pagina-header">
+        <h1>Configurações da Empresa</h1>
+      </div>
+      <div class="cartao-conteudo">
+        <div id="alerta" class="alert alert-danger d-none"></div>
+        <div id="alerta-sucesso" class="alert alert-success d-none"></div>
+        <form id="form-empresa" style="max-width: 480px;">
+          <div class="mb-3">
+            <label class="form-label">Razão Social</label>
+            <input type="text" class="form-control" id="razaoSocial" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">CNPJ</label>
+            <input type="text" class="form-control" id="cnpj" disabled />
+            <div class="form-text">Apenas o Administrador Geral pode alterar o CNPJ.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Plano</label>
+            <input type="text" class="form-control" id="plano" disabled />
+          </div>
+          <button type="submit" class="btn btn-roxo">Salvar alterações</button>
+        </form>
+
+        <hr class="my-4" />
+
+        <h5>Alterar minha senha</h5>
+        <div id="alerta-senha" class="alert alert-danger d-none"></div>
+        <div id="alerta-senha-sucesso" class="alert alert-success d-none"></div>
+        <form id="form-senha" style="max-width: 480px;">
+          <div class="mb-3">
+            <label class="form-label">Nova senha</label>
+            <input type="password" class="form-control" id="novaSenha" minlength="6" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Confirmar nova senha</label>
+            <input type="password" class="form-control" id="confirmarSenha" minlength="6" required />
+          </div>
+          <button type="submit" class="btn btn-outline-secondary">Alterar senha</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/config/apiConfig.js"></script>
+  <script src="../js/components/shell.js"></script>
+  <script>
+    exigirSessao();
+    renderizarShell('configuracoes.html');
+
+    async function carregarEmpresa() {
+      try {
+        const resultado = await apiFetch('/empresas/minha');
+        document.getElementById('razaoSocial').value = resultado.empresa.razao_social;
+        document.getElementById('cnpj').value = resultado.empresa.cnpj;
+        document.getElementById('plano').value = resultado.empresa.plano;
+      } catch (erro) {
+        document.getElementById('alerta').textContent = erro.message;
+        document.getElementById('alerta').classList.remove('d-none');
+      }
+    }
+
+    document.getElementById('form-empresa').addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      const alerta = document.getElementById('alerta');
+      const alertaSucesso = document.getElementById('alerta-sucesso');
+      alerta.classList.add('d-none');
+      alertaSucesso.classList.add('d-none');
+      try {
+        await apiFetch('/empresas/minha', {
+          method: 'PUT',
+          body: JSON.stringify({ razaoSocial: document.getElementById('razaoSocial').value.trim() }),
+        });
+        alertaSucesso.textContent = 'Dados atualizados com sucesso.';
+        alertaSucesso.classList.remove('d-none');
+      } catch (erro) {
+        alerta.textContent = erro.detalhes?.erros?.join(' ') || erro.message;
+        alerta.classList.remove('d-none');
+      }
+    });
+
+    document.getElementById('form-senha').addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      const alertaSenha = document.getElementById('alerta-senha');
+      const alertaSenhaSucesso = document.getElementById('alerta-senha-sucesso');
+      alertaSenha.classList.add('d-none');
+      alertaSenhaSucesso.classList.add('d-none');
+
+      const novaSenha = document.getElementById('novaSenha').value;
+      const confirmarSenha = document.getElementById('confirmarSenha').value;
+
+      try {
+        await apiFetch('/auth/alterar-senha', {
+          method: 'POST',
+          body: JSON.stringify({ novaSenha, confirmarSenha }),
+        });
+        alertaSenhaSucesso.textContent = 'Senha alterada com sucesso.';
+        alertaSenhaSucesso.classList.remove('d-none');
+        document.getElementById('form-senha').reset();
+      } catch (erro) {
+        alertaSenha.textContent = erro.detalhes?.erros?.join(' ') || erro.message;
+        alertaSenha.classList.remove('d-none');
+      }
+    });
+
+    carregarEmpresa();
+  </script>
+</body>
+</html>

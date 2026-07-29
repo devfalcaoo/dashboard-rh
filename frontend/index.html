@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gestão de Desempenho</title>
+  <script>
+    const token = localStorage.getItem('rh_access_token');
+    window.location.href = token ? 'pages/dashboard.html' : 'pages/login.html';
+  </script>
+</head>
+<body></body>
+</html>

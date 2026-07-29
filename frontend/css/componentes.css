@@ -1,0 +1,213 @@
+/* ==========================================================================
+   ARQUIVO: frontend/css/componentes.css
+   OBJETIVO: Estilos dos componentes reutilizaveis: sidebar de navegacao,
+   navbar superior, cartoes de indicador, badges de status e tabelas.
+   ========================================================================== */
+
+/* ---- Sidebar ---- */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--largura-sidebar);
+  background: linear-gradient(180deg, var(--cor-roxo-900), #241056 85%);
+  color: var(--cor-roxo-100);
+  padding: 22px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  z-index: 40;
+}
+
+.sidebar .marca {
+  font-family: var(--fonte-display);
+  color: var(--cor-branco);
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 0 10px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  margin-bottom: 14px;
+}
+
+.sidebar .marca small {
+  display: block;
+  font-family: var(--fonte-corpo);
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: var(--cor-roxo-100);
+  opacity: 0.7;
+}
+
+.sidebar a.item-menu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--raio-pequeno);
+  color: var(--cor-roxo-100);
+  text-decoration: none;
+  font-size: 0.92rem;
+  transition: background-color 0.15s ease;
+}
+
+.sidebar a.item-menu:hover,
+.sidebar a.item-menu:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--cor-branco);
+}
+
+.sidebar a.item-menu.ativo {
+  background: var(--cor-branco);
+  color: var(--cor-roxo-900);
+  font-weight: 600;
+}
+
+.sidebar .rodape-sidebar {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+/* ---- Navbar superior (dentro do conteudo) ---- */
+.navbar-topo {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.botao-notificacao {
+  position: relative;
+  border: 1px solid var(--cor-cinza-300);
+  background: var(--cor-branco);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cor-roxo-700);
+}
+
+.badge-contador {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--cor-perigo);
+  color: var(--cor-branco);
+  font-size: 0.65rem;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.chip-usuario {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+}
+
+.avatar-iniciais {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--cor-roxo-100);
+  color: var(--cor-roxo-700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+/* ---- Cartoes de indicador (dashboard) ---- */
+.cartao-indicador {
+  background: var(--cor-branco);
+  border-radius: var(--raio-padrao);
+  box-shadow: var(--sombra-cartao);
+  padding: 18px 20px;
+  height: 100%;
+}
+
+.cartao-indicador .rotulo {
+  font-size: 0.78rem;
+  color: var(--cor-cinza-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.cartao-indicador .valor {
+  font-family: var(--fonte-dados);
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--cor-roxo-900);
+}
+
+.cartao-conteudo {
+  background: var(--cor-branco);
+  border-radius: var(--raio-padrao);
+  box-shadow: var(--sombra-cartao);
+  padding: 20px;
+}
+
+/* ---- Badges de status ---- */
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.badge-status.pendente { background: #fef3c7; color: var(--cor-alerta); }
+.badge-status.em_andamento { background: #dbeafe; color: var(--cor-info); }
+.badge-status.concluida,
+.badge-status.concluido,
+.badge-status.atingida { background: #dcfce7; color: var(--cor-sucesso); }
+.badge-status.nao_iniciado,
+.badge-status.nao_atingida,
+.badge-status.cancelada { background: var(--cor-cinza-100); color: var(--cor-cinza-700); }
+
+/* ---- Tabelas ---- */
+.tabela-padrao thead th {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--cor-cinza-500);
+  border-bottom: 2px solid var(--cor-cinza-300);
+}
+
+.tabela-padrao td {
+  vertical-align: middle;
+  font-size: 0.9rem;
+}
+
+.estado-vazio {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--cor-cinza-500);
+}
+
+.btn-roxo {
+  background: var(--cor-roxo-700);
+  border-color: var(--cor-roxo-700);
+  color: var(--cor-branco);
+}
+
+.btn-roxo:hover, .btn-roxo:focus {
+  background: var(--cor-roxo-900);
+  border-color: var(--cor-roxo-900);
+  color: var(--cor-branco);
+}

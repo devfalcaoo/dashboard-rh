@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equipes - Gestão de Desempenho</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../css/variaveis.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/componentes.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="conteudo-principal">
+      <div class="pagina-header">
+        <h1>Equipes</h1>
+        <button class="btn btn-roxo" data-bs-toggle="modal" data-bs-target="#modal-equipe" onclick="abrirModalNovo()">
+          <i class="bi bi-plus-lg"></i> Nova Equipe
+        </button>
+      </div>
+      <div class="cartao-conteudo">
+        <div id="area-tabela">
+          <div class="text-center text-muted py-5"><div class="spinner-border text-primary"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modal-equipe" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="form-equipe">
+          <div class="modal-header">
+            <h5 class="modal-title" id="titulo-modal">Nova Equipe</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div id="alerta-modal" class="alert alert-danger d-none"></div>
+            <input type="hidden" id="equipe-id" />
+            <div class="mb-3">
+              <label class="form-label">Nome</label>
+              <input type="text" class="form-control" id="nome" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Líder</label>
+              <select class="form-select" id="liderId"><option value="">-</option></select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-roxo">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modal-membros" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Membros da equipe</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="alerta-membros" class="alert alert-danger d-none"></div>
+          <div class="mb-3 d-flex gap-2">
+            <select class="form-select" id="novoMembroId"></select>
+            <button class="btn btn-roxo" type="button" onclick="adicionarMembro()">Adicionar</button>
+          </div>
+          <ul class="list-group" id="lista-membros"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/config/apiConfig.js"></script>
+  <script src="../js/components/shell.js"></script>
+  <script>
+    exigirSessao();
+    renderizarShell('equipes.html');
+
+    let modalEquipe, modalMembros;
+    let cache = [];
+    let colaboradoresCache = [];
+    let equipeAtualId = null;
+
+    async function carregarColaboradores() {
+      if (colaboradoresCache.length > 0) return;
+      const resultado = await apiFetch('/colaboradores?tamanhoPagina=200');
+      colaboradoresCache = resultado.registros;
+    }
+
+    async function carregarSelectLideres() {
+      await carregarColaboradores();
+      const select = document.getElementById('liderId');
+      select.innerHTML = '<option value="">-</option>' + colaboradoresCache.map((c) => `<option value="${c.id}">${c.cpf}</option>`).join('');
+    }
+
+    async function carregarTabela() {
+      const areaTabela = document.getElementById('area-tabela');
+      try {
+        const resultado = await apiFetch('/equipes?tamanhoPagina=100');
+        cache = resultado.registros;
+
+        if (cache.length === 0) {
+          areaTabela.innerHTML = '<p class="estado-vazio">Nenhuma equipe cadastrada ainda.</p>';
+          return;
+        }
+
+        const linhas = cache.map((e) => `
+          <tr>
+            <td class="valor-dado">${e.nome}</td>
+            <td><span class="badge-status ${e.ativo ? 'concluida' : 'cancelada'}">${e.ativo ? 'Ativa' : 'Inativa'}</span></td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-secondary me-1" onclick="abrirModalEditar('${e.id}')"><i class="bi bi-pencil"></i> Editar</button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="abrirModalMembros('${e.id}')"><i class="bi bi-people"></i> Membros</button>
+            </td>
+          </tr>`).join('');
+
+        areaTabela.innerHTML = `
+          <table class="table tabela-padrao">
+            <thead><tr><th>Nome</th><th>Status</th><th></th></tr></thead>
+            <tbody>${linhas}</tbody>
+          </table>`;
+      } catch (erro) {
+        areaTabela.innerHTML = `<div class="alert alert-danger">${erro.message}</div>`;
+      }
+    }
+
+    async function abrirModalNovo() {
+      document.getElementById('form-equipe').reset();
+      document.getElementById('equipe-id').value = '';
+      document.getElementById('titulo-modal').textContent = 'Nova Equipe';
+      document.getElementById('alerta-modal').classList.add('d-none');
+      await carregarSelectLideres();
+    }
+
+    async function abrirModalEditar(id) {
+      const equipe = cache.find((e) => e.id === id);
+      await carregarSelectLideres();
+      document.getElementById('equipe-id').value = equipe.id;
+      document.getElementById('titulo-modal').textContent = 'Editar Equipe';
+      document.getElementById('nome').value = equipe.nome;
+      document.getElementById('liderId').value = equipe.lider_id || '';
+      document.getElementById('alerta-modal').classList.add('d-none');
+      modalEquipe.show();
+    }
+
+    document.getElementById('form-equipe').addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      const alertaModal = document.getElementById('alerta-modal');
+      alertaModal.classList.add('d-none');
+      const id = document.getElementById('equipe-id').value;
+      const payload = {
+        nome: document.getElementById('nome').value.trim(),
+        liderId: document.getElementById('liderId').value || undefined,
+      };
+      try {
+        if (id) {
+          await apiFetch(`/equipes/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        } else {
+          await apiFetch('/equipes', { method: 'POST', body: JSON.stringify(payload) });
+        }
+        modalEquipe.hide();
+        carregarTabela();
+      } catch (erro) {
+        alertaModal.textContent = erro.detalhes?.erros?.join(' ') || erro.message;
+        alertaModal.classList.remove('d-none');
+      }
+    });
+
+    async function abrirModalMembros(equipeId) {
+      equipeAtualId = equipeId;
+      await carregarColaboradores();
+      document.getElementById('alerta-membros').classList.add('d-none');
+      await carregarListaMembros();
+      const select = document.getElementById('novoMembroId');
+      select.innerHTML = colaboradoresCache.map((c) => `<option value="${c.id}">${c.cpf}</option>`).join('');
+      modalMembros.show();
+    }
+
+    async function carregarListaMembros() {
+      const lista = document.getElementById('lista-membros');
+      try {
+        const resposta = await apiFetch(`/equipes/${equipeAtualId}`);
+        const membros = resposta.equipe.membros || [];
+        if (membros.length === 0) {
+          lista.innerHTML = '<li class="list-group-item text-muted">Nenhum membro ainda.</li>';
+          return;
+        }
+        lista.innerHTML = membros.map((m) => `
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            ${m.colaborador_id}
+            <button class="btn btn-sm btn-outline-danger" onclick="removerMembro('${m.colaborador_id}')"><i class="bi bi-trash"></i></button>
+          </li>`).join('');
+      } catch (erro) {
+        lista.innerHTML = `<li class="list-group-item text-danger">${erro.message}</li>`;
+      }
+    }
+
+    async function adicionarMembro() {
+      const colaboradorId = document.getElementById('novoMembroId').value;
+      const alertaMembros = document.getElementById('alerta-membros');
+      alertaMembros.classList.add('d-none');
+      try {
+        await apiFetch(`/equipes/${equipeAtualId}/membros`, { method: 'POST', body: JSON.stringify({ colaboradorId }) });
+        await carregarListaMembros();
+      } catch (erro) {
+        alertaMembros.textContent = erro.message;
+        alertaMembros.classList.remove('d-none');
+      }
+    }
+
+    async function removerMembro(colaboradorId) {
+      try {
+        await apiFetch(`/equipes/${equipeAtualId}/membros/${colaboradorId}`, { method: 'DELETE' });
+        await carregarListaMembros();
+      } catch (erro) {
+        const alertaMembros = document.getElementById('alerta-membros');
+        alertaMembros.textContent = erro.message;
+        alertaMembros.classList.remove('d-none');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      modalEquipe = new bootstrap.Modal(document.getElementById('modal-equipe'));
+      modalMembros = new bootstrap.Modal(document.getElementById('modal-membros'));
+    });
+
+    carregarTabela();
+  </script>
+</body>
+</html>

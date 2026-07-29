@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Departamentos - Gestão de Desempenho</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../css/variaveis.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/componentes.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="conteudo-principal">
+      <div class="pagina-header">
+        <h1>Departamentos</h1>
+        <button class="btn btn-roxo" data-bs-toggle="modal" data-bs-target="#modal-departamento" onclick="abrirModalNovo()">
+          <i class="bi bi-plus-lg"></i> Novo Departamento
+        </button>
+      </div>
+      <div class="cartao-conteudo">
+        <div id="area-tabela">
+          <div class="text-center text-muted py-5"><div class="spinner-border text-primary"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modal-departamento" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="form-departamento">
+          <div class="modal-header">
+            <h5 class="modal-title" id="titulo-modal">Novo Departamento</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div id="alerta-modal" class="alert alert-danger d-none"></div>
+            <input type="hidden" id="departamento-id" />
+            <div class="mb-3">
+              <label class="form-label">Nome</label>
+              <input type="text" class="form-control" id="nome" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Descrição</label>
+              <textarea class="form-control" id="descricao" rows="2"></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Responsável</label>
+              <select class="form-select" id="responsavelId"><option value="">-</option></select>
+            </div>
+            <div class="mb-3 d-none" id="grupo-ativo">
+              <label class="form-label">Status</label>
+              <select class="form-select" id="ativo">
+                <option value="true">Ativo</option>
+                <option value="false">Inativo</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-roxo">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/config/apiConfig.js"></script>
+  <script src="../js/components/shell.js"></script>
+  <script>
+    exigirSessao();
+    renderizarShell('departamentos.html');
+
+    let modalDepartamento;
+    let cache = [];
+
+    async function carregarSelectUsuarios() {
+      const usuarios = await apiFetch('/usuarios?tamanhoPagina=200');
+      const select = document.getElementById('responsavelId');
+      select.innerHTML = '<option value="">-</option>' + usuarios.registros.map((u) => `<option value="${u.id}">${u.nome}</option>`).join('');
+    }
+
+    async function carregarTabela() {
+      const areaTabela = document.getElementById('area-tabela');
+      try {
+        const resultado = await apiFetch('/departamentos?tamanhoPagina=100');
+        cache = resultado.registros;
+
+        if (cache.length === 0) {
+          areaTabela.innerHTML = '<p class="estado-vazio">Nenhum departamento cadastrado ainda.</p>';
+          return;
+        }
+
+        const linhas = cache.map((d) => `
+          <tr>
+            <td class="valor-dado">${d.nome}</td>
+            <td>${d.descricao || '-'}</td>
+            <td><span class="badge-status ${d.ativo ? 'concluida' : 'cancelada'}">${d.ativo ? 'Ativo' : 'Inativo'}</span></td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-secondary" onclick="abrirModalEditar('${d.id}')"><i class="bi bi-pencil"></i> Editar</button>
+            </td>
+          </tr>`).join('');
+
+        areaTabela.innerHTML = `
+          <table class="table tabela-padrao">
+            <thead><tr><th>Nome</th><th>Descrição</th><th>Status</th><th></th></tr></thead>
+            <tbody>${linhas}</tbody>
+          </table>`;
+      } catch (erro) {
+        areaTabela.innerHTML = `<div class="alert alert-danger">${erro.message}</div>`;
+      }
+    }
+
+    async function abrirModalNovo() {
+      document.getElementById('form-departamento').reset();
+      document.getElementById('departamento-id').value = '';
+      document.getElementById('titulo-modal').textContent = 'Novo Departamento';
+      document.getElementById('grupo-ativo').classList.add('d-none');
+      document.getElementById('alerta-modal').classList.add('d-none');
+      await carregarSelectUsuarios();
+    }
+
+    async function abrirModalEditar(id) {
+      const departamento = cache.find((d) => d.id === id);
+      await carregarSelectUsuarios();
+      document.getElementById('departamento-id').value = departamento.id;
+      document.getElementById('titulo-modal').textContent = 'Editar Departamento';
+      document.getElementById('nome').value = departamento.nome;
+      document.getElementById('descricao').value = departamento.descricao || '';
+      document.getElementById('responsavelId').value = departamento.responsavel_id || '';
+      document.getElementById('grupo-ativo').classList.remove('d-none');
+      document.getElementById('ativo').value = String(departamento.ativo);
+      document.getElementById('alerta-modal').classList.add('d-none');
+      modalDepartamento.show();
+    }
+
+    document.getElementById('form-departamento').addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      const alertaModal = document.getElementById('alerta-modal');
+      alertaModal.classList.add('d-none');
+      const id = document.getElementById('departamento-id').value;
+
+      const payload = {
+        nome: document.getElementById('nome').value.trim(),
+        descricao: document.getElementById('descricao').value.trim() || undefined,
+        responsavelId: document.getElementById('responsavelId').value || undefined,
+      };
+      if (id) payload.ativo = document.getElementById('ativo').value === 'true';
+
+      try {
+        if (id) {
+          await apiFetch(`/departamentos/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        } else {
+          await apiFetch('/departamentos', { method: 'POST', body: JSON.stringify(payload) });
+        }
+        modalDepartamento.hide();
+        carregarTabela();
+      } catch (erro) {
+        alertaModal.textContent = erro.detalhes?.erros?.join(' ') || erro.message;
+        alertaModal.classList.remove('d-none');
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      modalDepartamento = new bootstrap.Modal(document.getElementById('modal-departamento'));
+    });
+
+    carregarTabela();
+  </script>
+</body>
+</html>

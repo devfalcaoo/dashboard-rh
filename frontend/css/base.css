@@ -1,0 +1,105 @@
+/* ==========================================================================
+   ARQUIVO: frontend/css/base.css
+   OBJETIVO: Reset leve, tipografia global e estrutura do shell (sidebar
+   fixa + area de conteudo), reutilizado por todas as paginas internas.
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--fonte-corpo);
+  background-color: var(--cor-cinza-50);
+  color: var(--cor-cinza-900);
+  margin: 0;
+}
+
+h1, h2, h3, h4, .titulo-display {
+  font-family: var(--fonte-display);
+  color: var(--cor-roxo-900);
+  letter-spacing: -0.01em;
+}
+
+.valor-dado {
+  font-family: var(--fonte-dados);
+  font-variant-numeric: tabular-nums;
+}
+
+a {
+  color: var(--cor-roxo-700);
+}
+
+/* Foco visivel para acessibilidade de teclado */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--cor-roxo-500);
+  outline-offset: 2px;
+}
+
+/* ---- Shell (sidebar + conteudo) ---- */
+.shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.conteudo-principal {
+  flex: 1;
+  margin-left: var(--largura-sidebar);
+  padding: 28px 32px 60px;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .conteudo-principal {
+    margin-left: 0;
+    padding: 20px;
+  }
+}
+
+.pagina-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pagina-header h1 {
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+/* ---- Tela de login (sem sidebar) ---- */
+.tela-login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top left, var(--cor-roxo-900), var(--cor-roxo-700) 60%);
+}
+
+.cartao-login {
+  background: var(--cor-branco);
+  border-radius: var(--raio-padrao);
+  box-shadow: 0 20px 60px rgba(46, 16, 101, 0.35);
+  padding: 40px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.reduce-motion {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

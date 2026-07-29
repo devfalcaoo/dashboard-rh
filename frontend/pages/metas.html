@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Metas - Gestão de Desempenho</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="../css/variaveis.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/componentes.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="conteudo-principal">
+      <div class="pagina-header">
+        <h1>Minhas Metas</h1>
+      </div>
+      <div class="cartao-conteudo">
+        <div id="area-lista">
+          <div class="text-center text-muted py-5"><div class="spinner-border text-primary"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/config/apiConfig.js"></script>
+  <script src="../js/components/shell.js"></script>
+  <script>
+    exigirSessao();
+    renderizarShell('metas.html');
+
+    async function carregarLista() {
+      const areaLista = document.getElementById('area-lista');
+      try {
+        const resultado = await apiFetch('/metas/minhas?tamanhoPagina=100');
+        if (resultado.registros.length === 0) {
+          areaLista.innerHTML = '<p class="estado-vazio">Você não possui metas no momento.</p>';
+          return;
+        }
+        areaLista.innerHTML = `
+          <table class="table tabela-padrao">
+            <thead><tr><th>Título</th><th>Progresso</th><th>Status</th><th>Prazo</th><th></th></tr></thead>
+            <tbody>
+              ${resultado.registros
+                .map((meta) => {
+                  const percentual = meta.valor_meta > 0 ? Math.min(100, Math.round((meta.valor_atual / meta.valor_meta) * 100)) : 0;
+                  return `
+                  <tr>
+                    <td>${meta.titulo}</td>
+                    <td style="min-width:180px;">
+                      <div class="progress" style="height:8px;"><div class="progress-bar bg-success" style="width:${percentual}%"></div></div>
+                      <small class="text-muted">${meta.valor_atual} / ${meta.valor_meta}</small>
+                    </td>
+                    <td><span class="badge-status ${meta.status}">${meta.status.replace('_', ' ')}</span></td>
+                    <td>${meta.prazo || '-'}</td>
+                    <td>
+                      ${
+                        meta.status !== 'cancelada'
+                          ? `<div class="input-group input-group-sm" style="max-width:180px;">
+                               <input type="number" step="0.01" class="form-control" id="valor-${meta.id}" placeholder="Novo valor">
+                               <button class="btn btn-outline-secondary" onclick="atualizarValor('${meta.id}')">OK</button>
+                             </div>`
+                          : ''
+                      }
+                    </td>
+                  </tr>`;
+                })
+                .join('')}
+            </tbody>
+          </table>`;
+      } catch (erro) {
+        areaLista.innerHTML = `<div class="alert alert-danger">${erro.message}</div>`;
+      }
+    }
+
+    async function atualizarValor(id) {
+      const campo = document.getElementById(`valor-${id}`);
+      try {
+        await apiFetch(`/metas/${id}/valor-atual`, {
+          method: 'PATCH',
+          body: JSON.stringify({ valorAtual: Number(campo.value) }),
+        });
+        carregarLista();
+      } catch (erro) {
+        alert(erro.message);
+      }
+    }
+
+    carregarLista();
+  </script>
+</body>
+</html>
