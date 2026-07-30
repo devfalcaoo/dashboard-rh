@@ -100,8 +100,6 @@ async function login({ email, senha, ip }) {
  * @param {{ usuarioLogado: object, ip: string }} parametros
  */
 async function logout({ usuarioLogado, ip }) {
-  // auth.admin.signOut requer privilegios de service_role e invalida as
-  // sessoes ativas do usuario no Supabase Auth.
   const { error } = await supabaseAdmin.auth.admin.signOut(usuarioLogado.id, 'global');
 
   if (error) {
@@ -126,26 +124,100 @@ async function logout({ usuarioLogado, ip }) {
  *
  * @param {{ email: string, ip: string }} parametros
  */
-async function recuperarSenha({ email, ip }) {
-  const { error } = await supabaseAuthClient.auth.resetPasswordForEmail(email);
+/**
+ * ==========================================================================
+ * FUNÇÃO: recuperarSenha
+ * ==========================================================================
+ *
+ * OBJETIVO
+ *
+ * Solicita ao Supabase o envio do e-mail de recuperação de senha.
+ *
+ * O e-mail conterá um link que redirecionará o usuário para a página
+ * resetar-senha.html do sistema.
+ *
+ * Essa página será responsável por permitir que o usuário informe uma
+ * nova senha.
+ *
+ * Por segurança, esta função SEMPRE retorna sucesso ao frontend,
+ * independentemente de o e-mail existir ou não.
+ *
+ * Isso evita que pessoas descubram quais e-mails existem no sistema.
+ * ==========================================================================
+ */
 
-  // Mesmo em caso de erro, nao revelamos ao cliente se o e-mail existe.
-  // Registramos internamente para fins de auditoria/depuracao.
+async function recuperarSenha({ email, ip }) {
+
+  /**
+   * URL para onde o usuário será enviado após clicar no e-mail.
+   *
+   * Em produção basta alterar esta URL.
+   */
+  const redirectTo = 'http://localhost:3000/pages/resetar-senha.html';
+
+  /**
+   * Solicita ao Supabase o envio do e-mail.
+   */
+  const { error } = await supabaseAuthClient.auth.resetPasswordForEmail(
+    email,
+    {
+      redirectTo,
+    }
+  );
+
+  /**
+   * Caso ocorra algum erro interno no Supabase,
+   * registramos apenas na auditoria.
+   *
+   * O usuário NÃO recebe a informação.
+   */
   if (error) {
+
     await auditoriaService.registrar({
+
       operacao: OPERACOES_LOG.FALHA,
+
       tabelaAfetada: 'usuarios',
+
       ip,
-      detalhes: { motivo: 'falha ao solicitar recuperacao de senha', email, erro: error.message },
+
+      detalhes: {
+
+        motivo: 'erro ao solicitar recuperação de senha',
+
+        email,
+
+        erro: error.message,
+
+      },
+
     });
-  } else {
-    await auditoriaService.registrar({
-      operacao: OPERACOES_LOG.ALTERACAO,
-      tabelaAfetada: 'usuarios',
-      ip,
-      detalhes: { motivo: 'solicitacao de recuperacao de senha', email },
-    });
+
+    return;
+
   }
+
+  /**
+   * Auditoria de sucesso.
+   */
+  await auditoriaService.registrar({
+
+    operacao: OPERACOES_LOG.ALTERACAO,
+
+    tabelaAfetada: 'usuarios',
+
+    ip,
+
+    detalhes: {
+
+      motivo: 'solicitação de recuperação de senha',
+
+      email,
+
+    },
+
+  });
+
 }
 
 /**
